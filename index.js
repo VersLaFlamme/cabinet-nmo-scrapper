@@ -4,7 +4,15 @@ import fs from 'fs';
 import stripHtml from 'string-strip-html';
 import * as dotenv from 'dotenv';
 dotenv.config();
-import {url, queryGetAvailableTests, queryGetTestElement, queryGetTestProgram, queryGetTestData, queryGetAnswer, getTestsHeaders} from './constants.js';
+import {
+  url,
+  queryGetAvailableTests,
+  queryGetTestElement,
+  queryGetTestProgram,
+  queryGetTestData,
+  queryGetAnswer,
+  queryGetProgramTask,
+  getTestsHeaders} from './constants.js';
 
 let testTitle;
 let testId;
@@ -64,12 +72,27 @@ const ids = [];
               },
               query: queryGetTestProgram,
             })
-                .then((response) => {
+                .then(async (response) => {
                   const reponsePath = response.data.data.education_program_data.block[0].elements[0];
                   testTitle = reponsePath.title;
                   testId = reponsePath.test[0].id;
+                  const testPageId = response.data.data.education_program_data.block[0].id;
                   if (reponsePath.task !== undefined) {
                     task = stripHtml(reponsePath.task[0].description).result;
+                  } else {
+                    await axios.post(url, {
+                      operationName: 'education_element_data',
+                      variables: {
+                        id: testPageId,
+                        token: process.env.TOKEN,
+                      },
+                      query: queryGetProgramTask,
+                    })
+                        .then((response) => {
+                          const reponsePath = response.data.data.education_element_data.elements[0];
+                          if (reponsePath.task.length) task = stripHtml(reponsePath.task[0].description).result;
+                        })
+                        .catch((e) => console.error(e));
                   }
                   console.log(testTitle, `(testId: ${testId})`);
                 })
