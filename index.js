@@ -2,7 +2,9 @@
 import axios from 'axios';
 import fs from 'fs';
 import stripHtml from 'string-strip-html';
-import {url, token, queryGetAvailableTests, queryGetTestElement, queryGetTestProgram, queryGetTestData, queryGetAnswer, getTestsHeaders} from './constants.js';
+import * as dotenv from 'dotenv';
+dotenv.config();
+import {url, queryGetAvailableTests, queryGetTestElement, queryGetTestProgram, queryGetTestData, queryGetAnswer, getTestsHeaders} from './constants.js';
 
 let testTitle;
 let testId;
@@ -16,7 +18,7 @@ const ids = [];
   await axios.post(url, {
     operationName: 'education_programs',
     variables: {
-      token,
+      token: process.env.TOKEN,
       order: 'available_desc',
       tag: '',
     },
@@ -35,13 +37,14 @@ const ids = [];
       })
       .catch((e) => console.error(e));
   console.log(ids);
+
   // get test names and test ids
   for (const identifiactor of ids) {
     await axios.post(url, {
       operationName: 'education_element_data',
       variables: {
         id: identifiactor,
-        token,
+        token: process.env.TOKEN,
       },
       query: queryGetTestElement,
     })
@@ -57,7 +60,7 @@ const ids = [];
               operationName: 'education_program_data',
               variables: {
                 id: identifiactor,
-                token,
+                token: process.env.TOKEN,
               },
               query: queryGetTestProgram,
             })
@@ -74,6 +77,7 @@ const ids = [];
           }
         })
         .catch((e) => console.error(e));
+
     // get questions and available answers for the first test
     await axios.post(url, {
       operationName: 'tests_questions',
@@ -96,7 +100,7 @@ const ids = [];
         await axios.post(url, {
           operationName: 'questions_result',
           variables: {
-            token,
+            token: process.env.TOKEN,
             answer_id: [{id: availableAnswers[j].id}],
             question_id: questions[i].id},
           query: queryGetAnswer,
