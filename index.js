@@ -2,9 +2,8 @@
 import axios from 'axios';
 import fs from 'fs';
 import stripHtml from 'string-strip-html';
-import * as dotenv from 'dotenv';
-dotenv.config();
 import {
+  TOKEN,
   url,
   queryGetAvailableTests,
   queryGetTestElement,
@@ -18,7 +17,7 @@ let testTitle;
 let testId;
 let questions;
 let answers;
-let task;
+let task = [];
 const ids = [];
 
 (async () => {
@@ -26,7 +25,7 @@ const ids = [];
   await axios.post(url, {
     operationName: 'education_programs',
     variables: {
-      token: process.env.TOKEN,
+      token: TOKEN,
       order: 'available_desc',
       tag: '',
     },
@@ -52,7 +51,7 @@ const ids = [];
       operationName: 'education_element_data',
       variables: {
         id: identifiactor,
-        token: process.env.TOKEN,
+        token: TOKEN,
       },
       query: queryGetTestElement,
     })
@@ -61,14 +60,18 @@ const ids = [];
             const reponsePath = response.data.data.education_element_data.elements[0];
             testTitle = reponsePath.title;
             testId = reponsePath.test[0].id;
-            if (reponsePath.task.length) task = stripHtml(reponsePath.task[0].description).result;
+            if (reponsePath.task.length) {
+              for (let i = 0; i < reponsePath.task.length; i++) {
+                task.push(stripHtml(reponsePath.task[i].description).result);
+              }
+            }
             console.log(testTitle, `(testId: ${testId})`);
           } else {
             await axios.post(url, {
               operationName: 'education_program_data',
               variables: {
                 id: identifiactor,
-                token: process.env.TOKEN,
+                token: TOKEN,
               },
               query: queryGetTestProgram,
             })
@@ -78,19 +81,25 @@ const ids = [];
                   testId = reponsePath.test[0].id;
                   const testPageId = response.data.data.education_program_data.block[0].id;
                   if (reponsePath.task !== undefined) {
-                    task = stripHtml(reponsePath.task[0].description).result;
+                    for (let i = 0; i < reponsePath.task.length; i++) {
+                      task.push(stripHtml(reponsePath.task[i].description).result);
+                    }
                   } else {
                     await axios.post(url, {
                       operationName: 'education_element_data',
                       variables: {
                         id: testPageId,
-                        token: process.env.TOKEN,
+                        token: TOKEN,
                       },
                       query: queryGetProgramTask,
                     })
                         .then((response) => {
                           const reponsePath = response.data.data.education_element_data.elements[0];
-                          if (reponsePath.task.length) task = stripHtml(reponsePath.task[0].description).result;
+                          if (reponsePath.task.length) {
+                            for (let i = 0; i < reponsePath.task.length; i++) {
+                              task.push(stripHtml(reponsePath.task[i].description).result);
+                            }
+                          }
                         })
                         .catch((e) => console.error(e));
                   }
@@ -123,7 +132,7 @@ const ids = [];
         await axios.post(url, {
           operationName: 'questions_result',
           variables: {
-            token: process.env.TOKEN,
+            token: TOKEN,
             answer_id: [{id: availableAnswers[j].id}],
             question_id: questions[i].id},
           query: queryGetAnswer,
@@ -156,11 +165,13 @@ const ids = [];
         fs.appendFileSync(fileName, '\n');
       }
     }
-    if (task !== undefined) {
-      const taskFileName = `./completed-tests/${shortName}. Задание.txt`;
-      if (fs.existsSync(taskFileName)) fs.unlinkSync(taskFileName);
-      fs.appendFileSync(taskFileName, task);
-      task = undefined;
+    if (task.length !== 0) {
+      for (let i = 0; i < task.length; i++) {
+        const taskFileName = `./completed-tests/${shortName}. Задание ${i+1}.txt`;
+        if (fs.existsSync(taskFileName)) fs.unlinkSync(taskFileName);
+        fs.appendFileSync(taskFileName, task[i]);
+      }
+      task = [];
     }
   }
 })();
